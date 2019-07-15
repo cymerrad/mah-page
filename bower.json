@@ -1,0 +1,20 @@
+{
+  "name": "mah-page",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "dependencies": {
+    "purescript-prelude": "^4.1.1",
+    "purescript-console": "^4.2.0",
+    "purescript-flare": "^5.0.0",
+    "purescript-js-timers": "^4.0.1",
+    "purescript-effect": "^2.0.1",
+    "purescript-random": "^4.0.0"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "^4.0.0"
+  }
+}
