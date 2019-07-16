@@ -1,4 +1,4 @@
-module Flies where
+module Fly (main) where
 
 import Prelude
 
@@ -8,23 +8,29 @@ import Data.Unfoldable (replicateA)
 import Partial.Unsafe (unsafePartial)
 import Data.Maybe (Maybe(..), fromJust)
 import Math (Radians, log, cos, sin, sqrt, pi)
-
-import DOM (DOM)
-import Control.Timer (TIMER)
-import Signal.Channel (CHANNEL)
-import Signal.DOM (animationFrame)
-import Graphics.Drawing (Point, render)
-import Graphics.Canvas (CANVAS, Context2D,
+import Effect (Effect)
+import Effect.Random (random, randomRange)
+import Color (hsl)
+import Flare (UI, numberSlider, runFlareWith, buttons, foldp, intSlider_, lift)
+import Flare.Drawing (runFlareDrawing, Drawing, filled, fillColor, circle)
+import Color (white)
+import Graphics.Canvas (Context2D,
                         getCanvasElementById, getContext2D,
                         getCanvasWidth, getCanvasHeight, clearRect)
+import Graphics.Drawing (Point, render)
 
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Random (RANDOM, random, randomRange)
+import Signal.Time (Time)
+import Signal.DOM (animationFrame)
 
-import Flare (UI, runFlareWith, lift, intSlider_, buttons, foldp)
-import Flare.Drawing (Drawing, white, fillColor, filled, circle)
+type Model =  { ctx :: Context2D
+              , width :: Number
+              , height :: Number
+              , flies :: Array Fly
+              , time :: Time
+              , start :: Boolean
+              , reset :: Boolean
+}
 
-type Time = Number
 type Velocity = Point
 
 scale :: Number -> Point -> Point
@@ -47,7 +53,7 @@ fly {p: p, v: v} t = g t ⋆ p ∠  f t
         a   = (p.x * v.y - p.y * v.x) / (p.x * v.x + p.y * v.y)
         b   = (p.x * v.x + p.y * v.y) / (p.x * p.x + p.y * p.y)
 
-randomFly :: forall eff. Number -> Number -> Eff (random :: RANDOM | eff) Fly
+randomFly :: Number -> Number -> Effect Fly
 randomFly width height = do
   x <- randomRange (-width/2.0) (width/2.0)
   y <- randomRange (-height/2.0) (height/2.0)
@@ -63,20 +69,12 @@ drawFlies origin flies time = foldMap makeCircle flies
   where makeCircle f = filled (fillColor white) $ circle (p.x + origin.x) (p.y + origin.y) 2.0
           where p = fly f time
 
-type Model = { context :: Context2D
-             , width   :: Number
-             , height  :: Number
-             , flies   :: Array Fly
-             , time    :: Time
-             , start   :: Boolean
-             , reset   :: Boolean }
-
-controller :: forall eff. Model -> Eff (canvas :: CANVAS | eff) Unit
+controller :: Model -> Effect Unit
 controller model = do
-  clearRect model.context {x: 0.0, y: 0.0, w: model.width, h: model.height}
-  render model.context $ filled (fillColor white) $
+  clearRect model.ctx {x: 0.0, y: 0.0, width: model.width, height: model.height}
+  render model.ctx $ filled (fillColor white) $
                          circle (model.width/2.0) (model.height/2.0) 10.0
-  render model.context $ drawFlies {x: model.width/2.0, y: model.height/2.0}
+  render model.ctx $ drawFlies {x: model.width/2.0, y: model.height/2.0}
                                    model.flies
                                    model.time
 data Action = Start | Reset
@@ -89,7 +87,7 @@ isAction :: Maybe Action -> Action -> Boolean
 isAction (Just a) b = label a == label b
 isAction Nothing  _ = false
 
-view :: forall e. Model -> UI (timer :: TIMER | e) Model
+view :: Model -> UI Model
 view model = state <$> buttons [Start, Reset] label
                    <*> intSlider_ 0 200 20
                    <*> lift animationFrame
@@ -98,22 +96,24 @@ view model = state <$> buttons [Start, Reset] label
                                     , start = action `isAction` Start
                                     , reset = action `isAction` Reset }
 
-resetView :: forall e. Model -> UI (timer :: TIMER | e) Model
+resetView :: Model -> UI Model
 resetView model = foldp acc model $ view model
   where acc ma mb = if not mb.start || ma.reset
                        then ma{start = next, time = 0.0}
                        else ma{start = next, time = ma.time - mb.time}
                     where next = (ma.start || mb.start) && not ma.reset
 
-main :: Eff (dom :: DOM, channel :: CHANNEL, canvas :: CANVAS, timer :: TIMER, random :: RANDOM) Unit
+
+main :: Effect Unit
+-- main = runFlareDrawing "controls" "output" ui
 main = do
-  canvas      <- getCanvasElementById "output"
-  let pcanvas =  unsafePartial $ fromJust canvas
-  context     <- getContext2D pcanvas
+  mcanvas     <- getCanvasElementById "output"
+  let pcanvas =  unsafePartial $ fromJust mcanvas
+  ctx         <- getContext2D pcanvas
   width       <- getCanvasWidth pcanvas
   height      <- getCanvasHeight pcanvas
   flies       <- replicateA 200 $ randomFly width height
-  runFlareWith "controls" controller $ resetView { context: context
+  runFlareWith "controls" controller $ resetView { ctx: ctx
                                                  , width  : width
                                                  , height : height
                                                  , flies  : flies

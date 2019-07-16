@@ -12,7 +12,8 @@
     "purescript-flare": "^5.0.0",
     "purescript-js-timers": "^4.0.1",
     "purescript-effect": "^2.0.1",
-    "purescript-random": "^4.0.0"
+    "purescript-random": "^4.0.0",
+    "purescript-integers": "^4.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0"
