@@ -1,7 +1,7 @@
 module Main where
 
-import MahUtils.Vector
 import Prelude
+
 import Color (hsl)
 import Data.Foldable (foldMap)
 import Data.Int (toNumber)
@@ -10,40 +10,41 @@ import Data.Maybe (Maybe)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Console (log)
-import Flare (UI, lift, runFlareWith)
 import Flare.Drawing (Drawing, circle, fillColor, filled)
-import Graphics.Canvas (Context2D, clearRect, getCanvasHeight, getCanvasWidth, getContext2D)
-import Graphics.Drawing (render)
-import MahUtils.HTML (getSaneCanvasElementById, getSaneElementbyId)
-import Signal.DOM (CoordinatePair, animationFrame, mousePos)
-import Signal.Time (Time)
-import Web.HTML.HTMLElement (offsetLeft, offsetTop)
+import MahUtils.Vector (Vector)
+import Signal (Signal, foldp, runSignal, sampleOn, (~>))
+import Signal.DOM (CoordinatePair, mousePos)
+import Signal.Time (Time, every)
 
-type Object
+type GameObject
   = { id :: String
-    , hueVal :: Number -- some sprite definition
+    , css :: String -- some sprite definition
     , position :: Vector
     , velocity :: Vector
     }
 
+foreign import renderObject :: GameObject -> Effect Unit
+
+foreign import width :: Number
+
+foreign import height :: Number
+
 type ObjectMap
-  = Map.Map String Object
+  = Map.Map String GameObject
 
 type GameEnvironment
   = { objects :: ObjectMap }
 
 type Model
-  = { ctx :: Context2D
-    , canvasSize :: Vector
+  = { canvasSize :: Vector
     , canvasPos :: Vector
     , pointerPos :: Vector
     , env :: GameEnvironment
     , time :: Time
-    , dTime :: Number
-    , ticks :: Int
+    , ticks :: Number
     }
 
-updateObjects :: Model -> (Object -> Maybe Object) -> String -> Model
+updateObjects :: Model -> (GameObject -> Maybe GameObject) -> String -> Model
 updateObjects model updateFunc key =
   model
     { env
@@ -51,7 +52,7 @@ updateObjects model updateFunc key =
       }
     }
 
-updateObjectsAll :: Model -> (Object -> Maybe Object) -> Model
+updateObjectsAll :: Model -> (GameObject -> Maybe GameObject) -> Model
 updateObjectsAll model updateFunc =
   model
     { env
@@ -59,33 +60,50 @@ updateObjectsAll model updateFunc =
       }
     }
 
+frameRateConst :: Number
+frameRateConst = 33.0
+
+-- frameRateConst = 1000.0
+frameRate :: Signal Number
+frameRate = every frameRateConst
+
 movementFactor :: Number
 movementFactor = 0.5
 
-waterLevel :: Model -> Number
-waterLevel m = m.canvasSize.y
+waterLevel :: Number
+waterLevel = height
 
-startObjects :: Model -> Effect ObjectMap
-startObjects m =
-  pure
-    $ Map.fromFoldable
-        [ Tuple "bait" { id: "bait", hueVal: 0.0, position: { x: 0.0, y: 0.0 }, velocity: { x: 0.0, y: 0.0 } }
-        , Tuple "fish" { id: "fish", hueVal: 200.0, position: { x: (m.canvasSize.x / 2.0), y: (waterLevel m) }, velocity: { x: 0.0, y: 0.0 } }
-        ]
+initialGameEnv :: GameEnvironment
+initialGameEnv =
+  { objects:
+    Map.fromFoldable
+      [ Tuple "bait" { id: "bait", css: "", position: { x: 0.0, y: 0.0 }, velocity: { x: 0.0, y: 0.0 } }
+      , Tuple "rod" { id: "rod", css: "", position: { x: 0.0, y: 0.0 }, velocity: { x: 0.0, y: 0.0 } }
+      , Tuple "fish" { id: "fish", css: "", position: { x: (width / 2.0), y: (waterLevel) }, velocity: { x: 0.0, y: 0.0 } }
+      ]
+  }
 
-moveObj :: Object -> Time -> Object
+initialModel :: Model
+initialModel =
+  { canvasSize: { x: width, y: height }
+  , canvasPos: { x: 0.0, y: 0.0 }
+  , pointerPos: { x: 0.0, y: 0.0 }
+  , env: initialGameEnv
+  , time: 0.0
+  , ticks: 0.0
+  }
+
+moveObj :: GameObject -> Time -> GameObject
 moveObj o dt = o -- TODO spreading only some properties of the object?
 
-setObjPos :: Object -> Number -> Number -> Object
+setObjPos :: GameObject -> Number -> Number -> GameObject
 setObjPos o n_x n_y = o { position = { x: n_x, y: n_y } }
 
-setObjVel :: Object -> Number -> Number -> Object
+setObjVel :: GameObject -> Number -> Number -> GameObject
 setObjVel o n_x n_y = o { velocity = { x: n_x, y: n_y } }
 
-drawObjects :: GameEnvironment -> Time -> Drawing
-drawObjects env time = foldMap makeCircle env.objects
-  where
-  makeCircle o = filledCircle o.hueVal o.position.x o.position.y 23.0
+drawObjects :: GameEnvironment -> Effect Unit
+drawObjects env = foldMap renderObject env.objects
 
 filledCircle :: Number -> Number -> Number -> Number -> Drawing
 filledCircle hue_val pos_x pos_y radius = filled (fillColor col) (circle pos_x pos_y radius)
@@ -115,7 +133,7 @@ fishFollowsBait m =
   where
   fishFollow bM f = fishFollowSimple <$> bM <*> pure f
     where
-    fishFollowSimple :: Object -> Object -> Object
+    fishFollowSimple :: GameObject -> GameObject -> GameObject
     fishFollowSimple bait fish = setObjVel fish (bait.position.x - fish.position.x) (bait.position.y - fish.position.y)
 
 -- execute momentum of objects
@@ -126,17 +144,13 @@ objectsMove m = updateObjectsAll m momentum
 
 -- TODO or else it catches its pray and stuff happens
 fishStaysInWaterOrElse :: Model -> Model
-fishStaysInWaterOrElse m = updateObjects m (\v -> pure $ setObjPos v v.position.x (waterLevel m)) "fish"
+fishStaysInWaterOrElse m = updateObjects m (\v -> pure $ setObjPos v v.position.x (waterLevel)) "fish"
 
--- controller for controlling?
-controller :: Model -> Effect Unit
-controller model = do
-  log $ "Tick " <> (show model.ticks) <> "; dTime " <> (show model.dTime)
-  -- if (mod model.ticks 10 == 0) then log $ "dTime " <> (show model.dTime) else pure unit
-  clearRect model.ctx { x: 0.0, y: 0.0, width: model.canvasSize.x, height: model.canvasSize.y }
-  render model.ctx $ drawObjects model.env model.time
+-- Inputs needed to calculate model changes
+type Input
+  -- = Tuple Time CoordinatePair
+  = CoordinatePair
 
--- view updates
 mouseMoved :: CoordinatePair -> Model -> Model
 mouseMoved new_coord m =
   m
@@ -146,13 +160,12 @@ mouseMoved new_coord m =
       }
     }
 
-timePassed :: Number -> Number -> Int -> Model -> Model
-timePassed new_time old_time new_ticks m =
-    m
-      { time = new_time
-      , dTime = (new_time - old_time)
-      , ticks = new_ticks
-      }
+timePassed :: Number -> Number -> Model -> Model
+timePassed new_time new_ticks m =
+  m
+    { time = new_time
+    , ticks = new_ticks
+    }
 
 objectsInteract :: Model -> Model
 objectsInteract =
@@ -163,44 +176,31 @@ objectsInteract =
     >>> objectsMove
     >>> fishStaysInWaterOrElse
 
-view :: Model -> UI Model
-view model =
-  -- gather data each frame
-  state
-    <$> lift animationFrame
-    <*> lift mousePos
-    -- <*> intSlider_ 0 (floor model.width) (floor model.width)
-
-    -- apply to current model
-
-    <*> pure model
+gameLogic :: Input -> Model -> Model
+gameLogic input model = stateChanged input model
   where
-  state time coord =
+  stateChanged :: Input -> (Model -> Model)
+  stateChanged pPos =
     identity -- state changes
-      >>> timePassed time (model.time + 0.0) (model.ticks + 1)
-      >>> mouseMoved coord
+      -- >>> timePassed time (time / frameRateConst)
+
+      >>> mouseMoved pPos
       >>> objectsInteract
+
+-- controller taking inputs each frame
+controller :: Signal Input -> Signal Model
+controller input =
+  foldp gameLogic initialModel
+    (sampleOn frameRate input)
+
+view :: Model -> Effect Unit
+view model = drawObjects model.env
 
 main :: Effect Unit
 main = do
-  pcanvas <- getSaneCanvasElementById "output"
-  ctx <- getContext2D pcanvas
-  width <- getCanvasWidth pcanvas
-  height <- getCanvasHeight pcanvas
-  canvasEl <- getSaneElementbyId "output" -- this is some other canvas abstraction
-  baseX <- offsetLeft canvasEl -- only this allows us to read css computed values
-  baseY <- offsetTop canvasEl -- yeah
+  pPos <- mousePos
+  -- _ < runSignal frameRate
+  log $ "width " <> (show width) <> " ;height " <> (show height)
   let
-    model =
-      { ctx: ctx
-      , canvasSize: { x: width, y: height }
-      , canvasPos: { x: baseX, y: baseY }
-      , pointerPos: { x: baseX, y: baseY }
-      , env: { objects: Map.empty }
-      , time: 0.0
-      , dTime: 0.0
-      , ticks: 0
-      }
-  objects <- startObjects model
-  let modelPopulated = model { env { objects = objects } }
-  runFlareWith "controls" controller (view modelPopulated)
+    scene = controller $ pPos
+  runSignal $ scene ~> view
