@@ -43,7 +43,7 @@ objectsMove m = updateObjectsAll m momentum
   where
   momentum obj = pure $ setObjPos obj (obj.position.x + movementFactor * obj.velocity.x) (obj.position.y + movementFactor * obj.velocity.y)
 
--- TODO or else it catches its pray and stuff happens
+-- TODO or else it catches its prey and stuff happens
 fishStaysInWaterOrElse :: Model -> Model
 fishStaysInWaterOrElse m = updateObjects m (\v -> pure $ setObjPos v v.position.x (waterLevel m)) "fish"
 
