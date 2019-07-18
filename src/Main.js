@@ -15,12 +15,21 @@ exports.renderObject = function renderObject(o) {
   };
 };
 
-exports.width = (function() {
+exports.isHidden = function() {
+  return (
+    document.hidden ||
+    document.msHidden ||
+    document.webkitHidden ||
+    document.mozHidden
+  );
+};
+
+exports.width = function() {
   return Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
-})();
-exports.height = (function() {
+};
+exports.height = function() {
   return Math.max(
     document.documentElement.clientHeight,
     window.innerHeight || 0
   );
-})();
+};
