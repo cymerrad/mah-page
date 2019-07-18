@@ -1,142 +1,74 @@
+*,
+*:before,
+*:after {
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 body {
-  margin: 40px;
-  background-color: black;
-}
-
-#controls > div {
-  display: inline-block;
-  margin-right: 5px;
-}
-
-input[type="range"] {
-  /*removes default webkit styles*/
-  -webkit-appearance: none;
-
-  /*fix for FF unable to apply focus style bug */
-  border: 1px solid transparent;
-
-  /*required for proper track sizing in FF*/
-  width: 600px;
-}
-input[type="range"]::-webkit-slider-runnable-track {
-  width: 600px;
-  height: 3px;
-  background: #ddd;
-  border: none;
-  border-radius: 3px;
-}
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  border: none;
-  height: 16px;
-  width: 16px;
-  border-radius: 50%;
-  background: goldenrod;
-  margin-top: -4px;
-}
-input[type="range"]:focus {
-  outline: none;
-}
-input[type="range"]:focus::-webkit-slider-runnable-track {
-  background: #ccc;
-}
-
-input[type="range"]::-moz-range-track {
-  width: 600px;
-  height: 3px;
-  background: #ddd;
-  border: none;
-  border-radius: 3px;
-}
-input[type="range"]::-moz-range-thumb {
-  border: none;
-  height: 16px;
-  width: 16px;
-  border-radius: 50%;
-  background: goldenrod;
-}
-
-/*hide the outline behind the border*/
-input[type="range"]:-moz-focusring {
-  outline: 1px solid transparent;
-  outline-offset: -1px;
-}
-
-input[type="range"]::-ms-track {
-  width: 600px;
-  height: 3px;
-
-  /*remove bg colour from the track, we'll use ms-fill-lower and ms-fill-upper instead */
+  position: absolute;
   background: transparent;
-
-  /*leave room for the larger thumb to overflow with a transparent border */
-  border-color: transparent;
-  border-width: 6px 0;
-
-  /*remove default tick marks*/
-  color: transparent;
-}
-input[type="range"]::-ms-fill-lower {
-  background: #777;
-  border-radius: 10px;
-}
-input[type="range"]::-ms-fill-upper {
-  background: #ddd;
-  border-radius: 10px;
-}
-input[type="range"]::-ms-thumb {
-  border: none;
-  height: 16px;
-  width: 16px;
-  border-radius: 50%;
-  background: goldenrod;
-}
-input[type="range"]:focus::-ms-fill-lower {
-  background: #888;
-}
-input[type="range"]:focus::-ms-fill-upper {
-  background: #ccc;
+  width: 100%;
+  height: 100%;
 }
 
-label {
-  display: inline-block;
-  color: white;
+#canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* width: 512px; */
+  /* height: 512px; */
+  /* background: transparent; */
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  overflow: hidden;
+  -moz-transform-origin: 0 0;
+  -webkit-transform-origin: 0 0;
+  transform-origin: 0 0;
 }
 
-/* another C-c C-v */
-/* .flare-input > label {
-  display: inline-block;
-  width: 100px;
+#fish {
+  position: absolute;
+  width: 140px;
+  height: 126px;
+  /* top: -200px; */
+  /* left: -64px; */
+  background: url(gfx/pie-not-interested.gif);
 }
 
-.flare-input {
-  margin-bottom: 10px;
+#fish.jumping {
+  background: url(gfx/pie-interested.gif) !important;
 }
 
-.flare-input-number {
-  width: 85px;
-}
-
-input:invalid {
-  background-color: red;
-}
-
-fieldset {
-  border: none;
-  padding: 0px;
-}
-
-fieldset legend {
-  padding: 0px;
-  width: 100px;
-  float: left;
-}
-
-fieldset label {
-  margin-right: 10px;
-  cursor: pointer;
-}
-
-#output {
-  margin-top: 20px;
+/* #ground {
+  position: absolute;
+  width: 3840px;
+  height: 256px;
+  top: 384px;
+  left: -128px;
+  background: url(../gfx/map.png);
+  z-index: -1;
 } */
+
+#rod {
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  background-color: #996600;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+#bait {
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  background-color: #bbbb00;
+  border-radius: 50%;
+  display: inline-block;
+}
