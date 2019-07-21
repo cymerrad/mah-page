@@ -18,21 +18,22 @@ type GameObject
 type GameEnvironment
   = { objects :: ObjectMap }
 
+_BAIT_OBJ :: String
+_BAIT_OBJ = "bait"
+_ROD_OBJ :: String
+_ROD_OBJ = "rod"
+_FISH_OBJ :: String
+_FISH_OBJ = "fish"
+
 initialGameEnv :: GameEnvironment
 initialGameEnv =
   { objects:
     Map.fromFoldable
-      [ Tuple "bait" { id: "bait", css: "", position: { x: 0.0, y: 0.0 }, velocity: { x: 0.0, y: 0.0 } }
-      , Tuple "rod" { id: "rod", css: "", position: { x: 0.0, y: 0.0 }, velocity: { x: 0.0, y: 0.0 } }
-      , Tuple "fish" { id: "fish", css: "", position: { x: 0.0, y: 0.0 }, velocity: { x: 0.0, y: 0.0 } }
+      [ Tuple _BAIT_OBJ { id: _BAIT_OBJ, css: "", position: { x: 0.0, y: 0.0 }, velocity: { x: 0.0, y: 0.0 } }
+      , Tuple _ROD_OBJ { id: _ROD_OBJ, css: "", position: { x: 0.0, y: 0.0 }, velocity: { x: 0.0, y: 0.0 } }
+      , Tuple _FISH_OBJ { id: _FISH_OBJ, css: "", position: { x: 0.0, y: 0.0 }, velocity: { x: 0.0, y: 0.0 } }
       ]
   }
-
-movementFactor :: Number
-movementFactor = 0.5
-
-maxSpeed :: Number
-maxSpeed = 4.0
 
 type Model
   = { canvasSize :: Vector

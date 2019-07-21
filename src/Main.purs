@@ -59,7 +59,7 @@ main = do
     inputs = Tuple <$> frames <*> pos
 
     -- ticks when mouse moves or every 'frameRate' ms but only when visible
-    tickOn :: Signal _
+    tickOn :: Signal Boolean
     tickOn = merge ((const true) <~ pos) whenVisible
 
     scene :: Signal Model

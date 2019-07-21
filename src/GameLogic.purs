@@ -1,20 +1,46 @@
 module GameLogic where
 
-import Prelude
-import Data.Int (toNumber)
 import Models
-import Data.Tuple (Tuple(..))
-import Signal.Time (Time)
+import Prelude
+
+import Data.Int (toNumber)
 import Data.Map as Map
+import Data.Tuple (Tuple(..))
 import Signal.DOM (CoordinatePair)
+import Signal.Time (Time)
+
+
+movementFactor :: Number
+movementFactor = 0.5
+
+fishingLineLength :: Number
+fishingLineLength = 50.0
+
+maxSpeed :: Number
+maxSpeed = 4.0
 
 waterLevel :: Model -> Number
 waterLevel m = m.canvasSize.y
 
--- TODO rod is still equal to bait, in future bait will follow rod
+gravity :: Number
+gravity = 0.15 -- px / frame^2
+
+maxMoveSpeed :: Number
+maxMoveSpeed = 2.5 -- px / frame
+
+groundAccel :: Number
+groundAccel = 0.06 -- px / frame^2
+
+airAccel :: Number
+airAccel = 0.04 -- px / frame^2
+
+airFriction :: Number
+airFriction = 0.02 -- px / frame^2
+
+-- TODO rod is still equal to bait, in future bait will follow rod with a delay
 -- instantaneous move
 rodMoves :: Model -> Model
-rodMoves m = updateObjects m moveToPointer "bait"
+rodMoves m = updateObjects m moveToPointer _ROD_OBJ
   where
   moveToPointer obj =
     pure
@@ -22,26 +48,40 @@ rodMoves m = updateObjects m moveToPointer "bait"
 
 -- aplies momentum to rod
 baitFollowsRod :: Model -> Model
-baitFollowsRod = identity
+baitFollowsRod m =
+  let
+    targetM = Map.lookup _ROD_OBJ m.env.objects
+  in
+    updateObjects m (thingFollows targetM) _BAIT_OBJ
+  where
+  thingFollows oM f = setAsTarget <$> oM <*> pure f
 
 -- applies momentum to fish
 fishFollowsBait :: Model -> Model
 fishFollowsBait m =
   let
-    baitM = Map.lookup "bait" m.env.objects
+    targetM = Map.lookup _BAIT_OBJ m.env.objects
   in
-    updateObjects m (fishFollow baitM) "fish"
+    updateObjects m (thingFollows targetM) _FISH_OBJ
   where
-  fishFollow bM f = fishFollowSimple <$> bM <*> pure f
-    where
-    fishFollowSimple :: GameObject -> GameObject -> GameObject
-    fishFollowSimple bait fish = setObjVel fish (bait.position.x - fish.position.x) (bait.position.y - fish.position.y)
+  thingFollows oM f = setAsTarget <$> oM <*> pure f
+
+setAsTarget :: GameObject -> GameObject -> GameObject
+setAsTarget target source =
+  setObjVel source (target.position.x - source.position.x) (target.position.y - source.position.y)
 
 -- execute momentum of objects
 objectsMove :: Model -> Model
 objectsMove m = updateObjectsAll m momentum
   where
   momentum obj = pure $ setObjPos obj (obj.position.x + movementFactor * obj.velocity.x) (obj.position.y + movementFactor * obj.velocity.y)
+
+baitHangs :: Model -> Model
+baitHangs m =
+  updateObjects m hangOnRod _BAIT_OBJ
+  where
+    hangOnRod bait = pure $
+      setObjPos bait bait.position.x (bait.position.y + fishingLineLength)
 
 -- TODO or else it catches its prey and stuff happens
 fishStaysInWaterOrElse :: Model -> Model
@@ -69,6 +109,7 @@ objectsInteract =
     >>> baitFollowsRod
     >>> fishFollowsBait
     >>> objectsMove
+    >>> baitHangs
     >>> fishStaysInWaterOrElse
 
 -- Inputs needed to calculate model changes
